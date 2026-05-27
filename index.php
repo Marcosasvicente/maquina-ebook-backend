@@ -1,7 +1,7 @@
 <?php
 // --- CONFIGURAÇÃO DE SEGURANÇA E CHAVE API ---
 // A chave abaixo é a que você forneceu. O sistema a usará como prioridade.
-$apiKey = 'AIzaSyDiv97dj9UpB17FShxSMvF0npuzfLE0c-k';
+$apiKey = 'AQ.Ab8RN6JTSPj5ifyjfYhePzYEanp9ewSrA0Lmmzcj-NSMABJ0oQ';
 
 $ebook_html = null;
 $erro = null;
