@@ -1,7 +1,7 @@
 <?php
-// --- CONFIGURAÇÃO DE SEGURANÇA E CHAVE API ---
-// Tenta ler do Railway primeiro. Se tudo falhar, usa a sua chave real como última opção.
-$apiKey = getenv('GEMINI_API_KEY') ?: ($_ENV['GEMINI_API_KEY'] ?? 'AQ.Ab8RN6LO1wwTdZ8FlJTCu0PQhA1ulgBN-XXz2yyU5KIFypSAbw);
+// --- CONFIGURAÇÃO DE SEGURANÇA E CHAVE API DA GROQ ---
+// Tenta ler do Railway primeiro. Se falhar, usa a sua chave gsk_ fornecida.
+$apiKey = getenv('GROQ_API_KEY') ?: ($_ENV['GROQ_API_KEY'] ?? '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');
 
 $ebook_html = null;
 $erro = null;
@@ -9,13 +9,13 @@ $erro = null;
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['videoUrl'])) {
     $videoUrl = $_POST['videoUrl'];
     
-    // Extração do ID do Vídeo (Suporta youtube.com e youtu.be)
+    // Extração do ID do Vídeo (YouTube)
     preg_match("/(?:v=|\/)([a-zA-Z0-9_-]{11})/", $videoUrl, $matches);
     $videoId = $matches[1] ?? null;
 
     $textoBase = "";
     if ($videoId) {
-        // API auxiliar para capturar a legenda do YouTube
+        // Captura da legenda do vídeo
         $transcriptData = @file_get_contents("https://subtitles-youtube.vercel.app/api/transcript?videoId=" . $videoId);
         $transcript = json_decode($transcriptData, true);
         if ($transcript && is_array($transcript)) {
@@ -25,32 +25,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['videoUrl'])) {
         }
     }
 
-    // Prompt Estratégico em Psicologia Dark (Público Masculino 35-65 anos)
-    $promptTexto = "Aja como Especialista em Psicologia Dark e Copywriting de Alta Retenção. Crie um EBOOK COMPLETO (formatado em HTML) para homens de 35 a 65 anos baseado neste conteúdo: $videoUrl. Use linguagem madura, direta e autoritária. Aplique a cor #5D2A18 (Terracota) nos títulos h1 e h2. Transcrição do vídeo: $textoBase";
+    // Prompt Estratégico (Psicologia Dark e Copywriting)
+    $promptTexto = "Aja como Especialista em Psicologia Dark e Copywriting de Alta Retenção. Crie um EBOOK COMPLETO (formatado em HTML) para homens de 35 a 65 anos baseado neste conteúdo: $videoUrl. Use linguagem madura, direta e autoritária. Aplique a cor #5D2A18 nos títulos h1 e h2. Responda APENAS o código HTML do conteúdo. Transcrição: $textoBase";
     
-    $payload = ["contents" => [["parts" => [["text" => $promptTexto]]]]];
-    $apiUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" . $apiKey;
+    // Configuração para a API da Groq (Modelo Llama 3 70B)
+    $payload = [
+        "model" => "llama3-70b-8192",
+        "messages" => [
+            [
+                "role" => "user",
+                "content" => $promptTexto
+            ]
+        ],
+        "temperature" => 0.5
+    ];
 
-    // Configuração da chamada externa para o Google Gemini
+    $apiUrl = "https://api.groq.com/openai/v1/chat/completions";
+
     $ch = curl_init($apiUrl);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
-    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Content-Type: application/json',
+        'Authorization: Bearer ' . $apiKey
+    ]);
     
     $response = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
 
     $result = json_decode($response, true);
-    $ebookFinal = $result['candidates'][0]['content']['parts'][0]['text'] ?? null;
+    $ebookFinal = $result['choices'][0]['message']['content'] ?? null;
 
     if ($httpCode === 200 && $ebookFinal) {
-        // Limpa marcações de markdown do HTML
-        $ebook_html = str_replace(['```html', '
-```'], '', $ebookFinal);
+        // Remove possíveis tags de markdown que a IA possa incluir
+        $ebook_html = str_replace(['```html', '```'], '', $ebookFinal);
     } else {
-        $erro = "Erro na API do Gemini (Código HTTP: $httpCode). Verifique se a chave está ativa no Google Cloud ou se a cota gratuita estourou.";
+        $erro = "Erro na Groq (HTTP $httpCode). Verifique se a chave API está correta ou se atingiu o limite gratuito.";
     }
 }
 ?>
@@ -59,7 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['videoUrl'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EbookForge - Painel de Controle</title>
+    <title>EbookForge - Groq Edition</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { background-color: #fdfaf7; color: #331a11; }
@@ -74,24 +86,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['videoUrl'])) {
         
         <div class="text-center mb-10">
             <h1 class="text-4xl font-bold sanguine-text mb-2">EbookForge</h1>
-            <p class="text-gray-600">Transforme vídeos em ebooks de alta conversão.</p>
+            <p class="text-gray-600">Alta velocidade na criação de infoprodutos.</p>
         </div>
 
         <div class="bg-white p-6 rounded-xl shadow-lg mb-8 border border-gray-100">
             <form method="POST" class="space-y-4">
                 <div>
-                    <label class="block font-semibold mb-1 text-gray-700">Link do Vídeo do YouTube:</label>
+                    <label class="block font-semibold mb-1 text-gray-700">URL do Vídeo do YouTube:</label>
                     <input type="url" name="videoUrl" required placeholder="https://www.youtube.com/watch?v=..." 
                            class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-[#5D2A18] outline-none bg-gray-50">
                 </div>
                 <button type="submit" class="w-full sanguine-bg text-white font-bold py-3 rounded-lg hover:opacity-95 transition shadow-md">
-                    FORJAR EBOOK AGORA
+                    FORJAR EBOOK COM GROQ
                 </button>
             </form>
         </div>
 
         <?php if ($ebook_html): ?>
-            <div class="bg-white p-8 rounded-xl shadow-lg mb-8 prose max-w-none border border-gray-100 shadow-inner">
+            <div class="bg-white p-8 rounded-xl shadow-lg mb-8 prose max-w-none border border-gray-100">
                 <?php echo $ebook_html; ?>
             </div>
             <button onclick="window.print()" class="w-full border-2 border-[#5D2A18] sanguine-text font-bold py-3 rounded-lg hover:bg-[#5D2A18] hover:text-white transition shadow-sm mb-10">
@@ -100,7 +112,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['videoUrl'])) {
         <?php endif; ?>
 
         <?php if ($erro): ?>
-            <div class="bg-red-50 text-red-700 p-4 rounded-lg text-center font-bold border border-red-200 shadow-sm">
+            <div class="bg-red-50 text-red-700 p-4 rounded-lg text-center font-bold border border-red-200">
                 <?php echo $erro; ?>
             </div>
         <?php endif; ?>
