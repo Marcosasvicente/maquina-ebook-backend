@@ -1,5 +1,4 @@
 <?php
-// Limpa qualquer espaço que tenha ido junto na variável do Railway
 $apiKey = trim(getenv('GROQ_API_KEY') ?: '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');
 
 $ebook_html = null;
@@ -20,11 +19,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['videoUrl'])) {
         }
     }
 
-    // Prompt enxuto para evitar erro de processamento
     $promptTexto = "Crie um ebook em HTML baseado neste conteúdo: " . ($textoBase ?: $videoUrl) . ". Use tons de marrom (#5D2A18) nos títulos. Foco: Homens 35-65 anos. Seja direto.";
     
     $payload = [
-        "model" => "llama3-70b-8192",
+        "model" => "llama-3.1-70b-versatile", // MODELO ATUALIZADO AQUI
         "messages" => [["role" => "user", "content" => $promptTexto]],
         "temperature" => 0.7
     ];
@@ -47,7 +45,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['videoUrl'])) {
     if ($httpCode === 200) {
         $ebook_html = str_replace(['```html', '```'], '', $result['choices'][0]['message']['content']);
     } else {
-        // Exibe o erro exato da Groq para a gente matar a charada
         $msg_erro = $result['error']['message'] ?? 'Erro desconhecido';
         $erro = "Erro Groq ($httpCode): $msg_erro";
     }
