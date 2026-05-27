@@ -1,32 +1,35 @@
 <?php
-// 1. Configurações de Acesso (CORS)
+// 1. Configurações de Acesso (CORS TOTAL para Lovable e Railway)
 header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Methods: POST, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type, Authorization");
-header("Content-Type: application/json");
+header("Access-Control-Allow-Methods: POST, GET, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
 
+// Responde imediatamente ao OPTIONS (pre-flight) do navegador
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
     exit;
 }
+
+header("Content-Type: application/json");
 
 // 2. Chave da API (Puxa das variáveis de ambiente do Railway)
 $apiKey = getenv('GEMINI_API_KEY');
 
-// 3. Recebe e decodifica os dados
+// 3. Recebe e decodifica os dados vindos do Lovable
 $input = json_decode(file_get_contents("php://input"), true);
 $videoUrl = $input['videoUrl'] ?? '';
 $tom = $input['tomDeVoz'] ?? 'Direto e Maduro';
 
 if (!$videoUrl) {
-    echo json_encode(["status" => "erro", "message" => "URL ausente"]);
+    echo json_encode(["status" => "erro", "message" => "URL do vídeo não fornecida."]);
     exit;
 }
 
-// 4. Extração do ID do Vídeo
+// 4. Extração do ID do Vídeo (Suporta youtube.com e youtu.be)
 preg_match("/(?:v=|\/)([a-zA-Z0-9_-]{11})/", $videoUrl, $matches);
 $videoId = $matches[1] ?? null;
 
-// 5. Tentativa de captura de legenda (Transcript)
+// 5. Captura da Legenda (Transcript) - Plano A
 $textoBase = "";
 if ($videoId) {
     $transcriptData = @file_get_contents("https://subtitles-youtube.vercel.app/api/transcript?videoId=" . $videoId);
@@ -40,27 +43,30 @@ if ($videoId) {
 }
 
 // 6. Montagem do Prompt Estratégico (Psicologia e Copywriting)
+// Focado no público 35-65 anos e estilo Sanguine
 $promptTexto = "Aja como um Especialista em Psicologia Dark e Copywriting de Alta Retenção. 
 Crie um EBOOK COMPLETO baseado neste link de vídeo: $videoUrl.
 
-CONTEÚDO BASE (TRANSCRIÇÃO): 
+CONTEÚDO EXTRAÍDO DO VÍDEO: 
 $textoBase
 
-INSTRUÇÕES CRÍTICAS:
-1. PÚBLICO: Homens de 35 a 65 anos. Use tom de autoridade, direto, maduro e sem gírias.
-2. ESTRUTURA: Título Magnético, Introdução Impactante, 5 Capítulos Profundos e uma Conclusão com CTA.
-3. FORMATO DE SAÍDA: Responda APENAS com o código HTML interno (sem a tag <html> ou <body>). Use <h1> para títulos, <h2> para capítulos e <p> para o texto.
-4. CORES: Use o estilo 'Sanguine' (Títulos em cor Terracota/Marrom escuro #5D2A18).
-5. Se a transcrição estiver vazia, use o seu conhecimento sobre o tema do vídeo para criar o conteúdo.
+DIRETRIZES DO PRODUTO:
+1. PÚBLICO-ALVO: Homens de 35 a 65 anos. Use linguagem direta, madura, autoritária e sem gírias.
+2. ESTRUTURA DO EBOOK: Título Magnético, Introdução Provocativa, 5 Capítulos com conteúdo denso e prático, e uma Conclusão com CTA forte.
+3. FORMATO DE SAÍDA: Responda APENAS com código HTML (use <h1>, <h2>, <p>). 
+4. ESTILO VISUAL: Aplique a cor #5D2A18 (Terracota Sanguine) nos títulos <h1> e <h2>.
+5. FALTA DE DADOS: Se a transcrição estiver vazia, use seu conhecimento vasto sobre o tema do vídeo para criar o melhor conteúdo possível.
 
-NÃO inclua explicações antes ou depois do código. Entregue apenas o conteúdo do ebook.";
+NÃO escreva 'Aqui está o seu ebook' ou qualquer texto fora do HTML.";
 
 $payload = [
     "contents" => [["parts" => [["text" => $promptTexto]]]]
 ];
 
 // 7. Chamada para a API do Gemini
-$ch = curl_init("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" . $apiKey);
+$apiUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" . $apiKey;
+
+$ch = curl_init($apiUrl);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_POST, true);
 curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
@@ -73,21 +79,22 @@ curl_close($ch);
 $result = json_decode($response, true);
 $ebookFinal = $result['candidates'][0]['content']['parts'][0]['text'] ?? null;
 
-// 8. Limpeza de possíveis marcações de markdown (```html ...)
+// 8. Limpeza de formatação Markdown indesejada
 if ($ebookFinal) {
     $ebookFinal = str_replace(['```html', '```'], '', $ebookFinal);
 }
 
-// 9. Resposta Final
+// 9. Resposta Final para o Lovable
 if ($httpCode === 200 && $ebookFinal) {
     echo json_encode([
         "status" => "sucesso",
         "ebook_html" => trim($ebookFinal)
     ]);
 } else {
+    http_response_code(500);
     echo json_encode([
         "status" => "erro",
-        "message" => "O Gemini não conseguiu gerar o texto. Verifique sua API Key no Railway.",
-        "debug" => $result
+        "message" => "Erro na comunicação com o Gemini. Verifique a API Key.",
+        "debug_http_code" => $httpCode
     ]);
 }
