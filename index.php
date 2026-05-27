@@ -1,7 +1,7 @@
 <?php
 // --- CONFIGURAÇÃO DE SEGURANÇA E CHAVE API ---
-// A chave abaixo é a que você forneceu. O sistema a usará como prioridade.
-$apiKey = 'AQ.Ab8RN6JTSPj5ifyjfYhePzYEanp9ewSrA0Lmmzcj-NSMABJ0oQ';
+// Tenta ler do Railway primeiro. Se tudo falhar, usa a sua chave real como última opção.
+$apiKey = getenv('GEMINI_API_KEY') ?: ($_ENV['GEMINI_API_KEY'] ?? 'AIzaSyDiv97dj9UpB17FShxSMvF0npuzfLE0c-k');
 
 $ebook_html = null;
 $erro = null;
@@ -47,9 +47,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['videoUrl'])) {
 
     if ($httpCode === 200 && $ebookFinal) {
         // Limpa marcações de markdown do HTML
-        $ebook_html = str_replace(['```html', '```'], '', $ebookFinal);
+        $ebook_html = str_replace(['```html', '
+```'], '', $ebookFinal);
     } else {
-        $erro = "Erro na API do Gemini (Código HTTP: $httpCode). Verifique se a chave está ativa no Google Cloud.";
+        $erro = "Erro na API do Gemini (Código HTTP: $httpCode). Verifique se a chave está ativa no Google Cloud ou se a cota gratuita estourou.";
     }
 }
 ?>
