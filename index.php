@@ -1,16 +1,17 @@
 <?php
-// 1. Configurações de Acesso (CORS TOTAL para Lovable e Railway)
+// 1. Liberação Total de Acesso (CORS) - ESSENCIAL PARA O LOVABLE
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: POST, GET, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
+header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, Origin, Accept");
+header("Access-Control-Max-Age: 86400");
 
-// Responde imediatamente ao OPTIONS (pre-flight) do navegador
+// Se for apenas uma sondagem (OPTIONS), encerra aqui com sucesso
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit;
 }
 
-header("Content-Type: application/json");
+header("Content-Type: application/json; charset=utf-8");
 
 // 2. Chave da API (Puxa das variáveis de ambiente do Railway)
 $apiKey = getenv('GEMINI_API_KEY');
@@ -29,7 +30,7 @@ if (!$videoUrl) {
 preg_match("/(?:v=|\/)([a-zA-Z0-9_-]{11})/", $videoUrl, $matches);
 $videoId = $matches[1] ?? null;
 
-// 5. Captura da Legenda (Transcript) - Plano A
+// 5. Captura da Legenda (Transcript)
 $textoBase = "";
 if ($videoId) {
     $transcriptData = @file_get_contents("https://subtitles-youtube.vercel.app/api/transcript?videoId=" . $videoId);
@@ -43,7 +44,6 @@ if ($videoId) {
 }
 
 // 6. Montagem do Prompt Estratégico (Psicologia e Copywriting)
-// Focado no público 35-65 anos e estilo Sanguine
 $promptTexto = "Aja como um Especialista em Psicologia Dark e Copywriting de Alta Retenção. 
 Crie um EBOOK COMPLETO baseado neste link de vídeo: $videoUrl.
 
