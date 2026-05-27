@@ -1,176 +1,83 @@
-const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = require('@whiskeysockets/baileys');
-const qrcode = require('qrcode-terminal');
-const Groq = require('groq-sdk');
-const express = require('express');
-const pino = require('pino');
+<?php
+// Configurações de CORS para o Lovable conseguir acessar este backend
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Methods: POST, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type");
+header("Content-Type: application/json");
 
-// ─────────────────────────────────────────
-// CONFIGURAÇÕES
-// ─────────────────────────────────────────
-const GROQ_API_KEY = process.env.GROQ_API_KEY || 'SUA_CHAVE_GROQ_AQUI';
-const LINK_COMPRA  = process.env.LINK_COMPRA  || 'https://SEU-LINK-KIWIFY.com';
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { exit; }
 
-const groq = new Groq({ apiKey: GROQ_API_KEY });
-const historico = {};
+// 1. Configurações
+$apiKey = getenv('GEMINI_API_KEY'); // Vamos configurar isso no Railway
 
-// ─────────────────────────────────────────
-// PROMPT DO AGENTE
-// ─────────────────────────────────────────
-const SYSTEM_PROMPT = `Você é a Sofia, consultora especialista em relacionamentos e psicologia comportamental.
-Você representa o ebook "Como Fazer Alguém Pensar em Você Obsessivamente".
+// 2. Recebe os dados do Lovable
+$input = json_decode(file_get_contents("php://input"), true);
+$videoUrl = $input['videoUrl'] ?? '';
+$tom = $input['tomDeVoz'] ?? 'Direto e Maduro';
 
-PRODUTO:
-- Nome: Como Fazer Alguém Pensar em Você Obsessivamente
-- Preço: R$ 47,00 (de R$ 97,00) — pagamento único
-- Formato: Ebook digital com acesso imediato por e-mail
-- Garantia: 7 dias com devolução de 100% sem perguntas
-- Link de compra: ${LINK_COMPRA}
-
-O QUE A PESSOA VAI APRENDER:
-• Os 7 gatilhos psicológicos que fazem alguém pensar em você sem parar
-• Como usar o silêncio estratégico a seu favor
-• A técnica do "vazio emocional" que desperta saudade instantânea
-• Por que perseguir afasta — e como inverter esse padrão
-• O segredo da escassez: como se tornar raro e valioso
-• Frases e comportamentos que ativam obsessão saudável
-• Como recuperar o controle emocional da situação
-
-ERROS COMUNS QUE O EBOOK RESOLVE:
-• Estar sempre disponível (mata o desejo)
-• Mandar mensagens demais (demonstra ansiedade)
-• Tentar explicar sentimentos com lógica (gera pena, não atração)
-• Pedir uma nova chance (diminui seu valor)
-• Stalkear redes sociais (valida o afastamento)
-
-OBJEÇÕES E RESPOSTAS:
-- "É caro" → Menos que um jantar. Tem garantia de 7 dias. Investimento em você mesma(o).
-- "Funciona mesmo?" → Baseado em psicologia comportamental. Se não funcionar, devolução garantida.
-- "É manipulação?" → Não. É entender como a atração funciona de forma genuína e saudável.
-- "Não tenho experiência?" → Escrito em linguagem simples. Qualquer pessoa aplica hoje.
-
-REGRAS:
-1. Seja acolhedora e empática — a pessoa está sofrendo
-2. Primeiro OUÇA a situação, depois ofereça a solução
-3. Mensagens curtas (máximo 3 parágrafos)
-4. Use emojis com moderação (1-2 por mensagem)
-5. Linguagem natural, como uma amiga que entende do assunto
-6. Ofereça o link quando a pessoa demonstrar interesse
-7. Nunca prometa resultados garantidos — use "pode te ajudar", "muitas pessoas relatam"`;
-
-// ─────────────────────────────────────────
-// GERAR RESPOSTA COM IA
-// ─────────────────────────────────────────
-async function gerarResposta(numero, mensagem) {
-  if (!historico[numero]) historico[numero] = [];
-
-  historico[numero].push({ role: 'user', content: mensagem });
-
-  if (historico[numero].length > 20) {
-    historico[numero] = historico[numero].slice(-20);
-  }
-
-  try {
-    const completion = await groq.chat.completions.create({
-      model: 'llama-3.3-70b-versatile',
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        ...historico[numero],
-      ],
-      max_tokens: 400,
-      temperature: 0.75,
-    });
-
-    const resposta = completion.choices[0].message.content;
-    historico[numero].push({ role: 'assistant', content: resposta });
-    return resposta;
-  } catch (erro) {
-    console.error('Erro na IA:', erro.message);
-    return 'Oi! Tive um probleminha aqui. Pode repetir? 😊';
-  }
+if (!$videoUrl) {
+    echo json_encode(["error" => "URL do vídeo não fornecida."]);
+    exit;
 }
 
-// ─────────────────────────────────────────
-// WHATSAPP COM BAILEYS
-// ─────────────────────────────────────────
-async function iniciarWhatsApp() {
-  const { state, saveCreds } = await useMultiFileAuthState('./sessao');
-  const { version } = await fetchLatestBaileysVersion();
+// 3. Extração simplificada do ID do Vídeo
+preg_match("/(?:v=|\/)([a-zA-Z0-9_-]{11})/", $videoUrl, $matches);
+$videoId = $matches[1] ?? null;
 
-  const sock = makeWASocket({
-    version,
-    auth: state,
-    logger: pino({ level: 'silent' }),
-    printQRInTerminal: false,
-  });
-
-  sock.ev.on('creds.update', saveCreds);
-
-  sock.ev.on('connection.update', ({ connection, lastDisconnect, qr }) => {
-    if (qr) {
-      console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      console.log('📱 ESCANEIE O QR CODE NO WHATSAPP:');
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
-      qrcode.generate(qr, { small: true });
-      console.log('\nWhatsApp → ⋮ → Dispositivos conectados → Conectar dispositivo\n');
-    }
-
-    if (connection === 'close') {
-      const deveReconectar = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
-      console.log('⚠️  Conexão encerrada. Reconectando:', deveReconectar);
-      if (deveReconectar) {
-        setTimeout(iniciarWhatsApp, 5000);
-      }
-    }
-
-    if (connection === 'open') {
-      console.log('✅ AGENTE DE VENDAS ATIVO E RESPONDENDO!');
-    }
-  });
-
-  sock.ev.on('messages.upsert', async ({ messages, type }) => {
-    if (type !== 'notify') return;
-
-    for (const msg of messages) {
-      // Ignora mensagens próprias, grupos e broadcasts
-      if (msg.key.fromMe) return;
-      if (msg.key.remoteJid === 'status@broadcast') return;
-      if (msg.key.remoteJid.endsWith('@g.us')) return;
-
-      const numero = msg.key.remoteJid;
-      const texto = msg.message?.conversation
-        || msg.message?.extendedTextMessage?.text
-        || '';
-
-      if (!texto.trim()) return;
-
-      console.log(`📩 [${new Date().toLocaleTimeString('pt-BR')}] ${numero}: ${texto}`);
-
-      // Simula digitando
-      await sock.sendPresenceUpdate('composing', numero);
-
-      const resposta = await gerarResposta(numero, texto);
-
-      // Delay humano
-      const delay = 1500 + Math.random() * 2000;
-      await new Promise((r) => setTimeout(r, delay));
-
-      await sock.sendMessage(numero, { text: resposta });
-      console.log(`💬 Bot → ${numero}: ${resposta.substring(0, 80)}...`);
-    }
-  });
+if (!$videoId) {
+    echo json_encode(["error" => "ID do vídeo inválido."]);
+    exit;
 }
 
-// ─────────────────────────────────────────
-// SERVIDOR HTTP (para Railway manter ativo)
-// ─────────────────────────────────────────
-const app = express();
-app.get('/', (req, res) => {
-  res.json({ status: 'online', agente: 'Agente de Vendas WhatsApp', uptime: Math.floor(process.uptime()) + 's' });
-});
-app.listen(process.env.PORT || 3000, () => {
-  console.log('🌐 Servidor HTTP ativo na porta', process.env.PORT || 3000);
-});
+// 4. Captura da Legenda (Usando API de terceiro gratuita/pública)
+$transcriptData = @file_get_contents("https://subtitles-youtube.vercel.app/api/transcript?videoId=" . $videoId);
+$transcript = json_decode($transcriptData, true);
 
-// Inicia
-console.log('🚀 Iniciando agente de vendas...');
-iniciarWhatsApp();
+$textoBase = "";
+if ($transcript && is_array($transcript)) {
+    foreach ($transcript as $line) {
+        $textoBase .= $line['text'] . " ";
+    }
+} else {
+    $textoBase = "Não foi possível extrair a legenda automaticamente. O vídeo pode estar sem legendas ou ser privado.";
+}
+
+// 5. Prompt Especialista para o Gemini
+$prompt = [
+    "contents" => [[
+        "parts" => [[
+            "text" => "Aja como um Especialista em Psicologia Dark e Copywriting de Retenção. 
+            Transforme a transcrição abaixo em um EBOOK de ALTA QUALIDADE.
+            Público-alvo: Homens de 35 a 65 anos. Linguagem: Direta, madura, sem gírias.
+            
+            ESTRUTURA DO EBOOK:
+            1. Título Impactante (Headline de vendas).
+            2. Introdução provocativa.
+            3. 5 Capítulos com ensinamentos práticos e profundos baseados no vídeo.
+            4. Conclusão com CTA (Chamada para ação).
+
+            ESTILO VISUAL (HTML): Use tags HTML (h1, h2, p) com cores do tema 'Sanguine' (Terracota #8B4513 para títulos).
+            
+            TRANSCRIÇÃO: $textoBase"
+        ]]
+    ]]
+];
+
+// 6. Chamada para a API do Gemini
+$ch = curl_init("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" . $apiKey);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($prompt));
+curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+
+$response = curl_exec($ch);
+$result = json_decode($response, true);
+curl_close($ch);
+
+$ebookTexto = $result['candidates'][0]['content']['parts'][0]['text'] ?? "Erro ao gerar conteúdo.";
+
+// 7. Retorno para o Lovable
+echo json_encode([
+    "status" => "sucesso",
+    "ebook_html" => $ebookTexto
+]);
