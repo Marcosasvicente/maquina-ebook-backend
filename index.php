@@ -22,7 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['videoUrl'])) {
     $promptTexto = "Crie um ebook em HTML baseado neste conteúdo: " . ($textoBase ?: $videoUrl) . ". Use tons de marrom (#5D2A18) nos títulos. Foco: Homens 35-65 anos. Seja direto.";
     
     $payload = [
-        "model" => "llama-3.1-70b-versatile", // MODELO ATUALIZADO AQUI
+        "model" => "llama-3.3-70b-versatile", // MODELO ATUALIZADO E ATIVO
         "messages" => [["role" => "user", "content" => $promptTexto]],
         "temperature" => 0.7
     ];
@@ -43,7 +43,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['videoUrl'])) {
     $result = json_decode($response, true);
     
     if ($httpCode === 200) {
-        $ebook_html = str_replace(['```html', '```'], '', $result['choices'][0]['message']['content']);
+        $ebook_html = str_replace(['```html', '
+```'], '', $result['choices'][0]['message']['content']);
     } else {
         $msg_erro = $result['error']['message'] ?? 'Erro desconhecido';
         $erro = "Erro Groq ($httpCode): $msg_erro";
