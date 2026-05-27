@@ -1,7 +1,7 @@
 <?php
 // --- CONFIGURAÇÃO DE SEGURANÇA E CHAVE API ---
 // Tenta ler do Railway primeiro. Se tudo falhar, usa a sua chave real como última opção.
-$apiKey = getenv('GEMINI_API_KEY') ?: ($_ENV['GEMINI_API_KEY'] ?? 'AIzaSyDiv97dj9UpB17FShxSMvF0npuzfLE0c-k');
+$apiKey = getenv('GEMINI_API_KEY') ?: ($_ENV['GEMINI_API_KEY'] ?? 'AQ.Ab8RN6LO1wwTdZ8FlJTCu0PQhA1ulgBN-XXz2yyU5KIFypSAbw);
 
 $ebook_html = null;
 $erro = null;
