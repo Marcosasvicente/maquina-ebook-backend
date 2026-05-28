@@ -1,28 +1,33 @@
 <?php
 /**
- * DIAGRAMADOR DARK PRO V5 - ULTRA-CONTRASTE & IMAGENS DINÂMICAS
+ * DIAGRAMADOR DARK PRO V6 - FOCO EM BRANCO PURO E IMAGENS FLUX
  */
 
-$titulo = $_POST['tema_escolhido'] ?? 'O PODER DO SILÊNCIO';
+$titulo = $_POST['tema_escolhido'] ?? 'ESTRATÉGIA DOMINANTE';
 $conteudoBruto = $_POST['ebook_html'] ?? '<h1>Conteúdo não encontrado.</h1>';
 
-function diagramarPremiumV5($html) {
-    // 1. Títulos de Capítulos: Vermelho Sangue, Gigantes, Negrito
+function diagramarPremiumV6($html) {
+    // 1. LIMPEZA DE ESTILOS INJETADOS: Remove qualquer 'color:' que a IA tenha colocado nos subtítulos
+    $html = preg_replace('/style="[^"]*color:[^"]*"/i', '', $html);
+
+    // 2. TÍTULOS DE CAPÍTULOS: Vermelho Sangue, Gigantes e Negrito
     $html = preg_replace('/<h2>(.*?)<\/h2>/i', '<h2 class="chapter-title">$1</h2>', $html);
 
-    // 2. SUBTÍTULOS: Branco Puro, Negrito, Fonte Inter (Corrigido para máxima visibilidade)
+    // 3. SUBTÍTULOS: Branco Puro (#FFFFFF) e Negrito Absoluto
+    // Forçamos a limpeza da tag e aplicamos a classe que garante o branco
     $html = preg_replace('/<h3>(.*?)<\/h3>/i', '<h3 class="sub-title">$1</h3>', $html);
 
-    // 3. Mecanismo de Imagens: Nova Estratégia de Injeção Direta
+    // 4. MECANISMO DE IMAGENS: Geradas após cada parágrafo denso
     $contador = 0;
     $callbackParagrafo = function($matches) use (&$contador) {
         $texto = trim($matches[1]);
-        if (strlen(strip_tags($texto)) < 60) return "<p class='book-paragraph'>$texto</p>";
+        // Ignora parágrafos muito curtos para não poluir
+        if (strlen(strip_tags($texto)) < 80) return "<p class='book-paragraph'>$texto</p>";
         
         $contador++;
-        // Tradução interna implícita para conceitos cinematográficos
-        $seed = rand(1, 9999);
-        $resumoPrompt = urlencode("dark cinematic noir, moody lighting, " . mb_strimwidth(strip_tags($texto), 0, 80));
+        $seed = rand(1, 99999);
+        // Prompt otimizado para o nicho Dark Psychology
+        $resumoPrompt = urlencode("cinematic dark noir photography, moody lighting, high contrast, masculine atmosphere, " . mb_strimwidth(strip_tags($texto), 0, 100));
         
         $imgUrl = "https://pollinations.ai/p/{$resumoPrompt}?width=1080&height=600&seed={$seed}&model=flux&nologo=true";
 
@@ -30,7 +35,7 @@ function diagramarPremiumV5($html) {
             <div class='paragraph-group'>
                 <p class='book-paragraph'>{$texto}</p>
                 <div class='image-wrapper'>
-                    <img src='{$imgUrl}' class='cinematic-img' alt='Visual Insight' loading='lazy'>
+                    <img src='{$imgUrl}' class='cinematic-img' alt='Insight Visual' loading='lazy' onerror='this.parentElement.style.display=\"none\"'>
                     <div class='img-overlay'></div>
                 </div>
             </div>";
@@ -38,14 +43,14 @@ function diagramarPremiumV5($html) {
 
     $html = preg_replace_callback('/<p>(.*?)<\/p>/i', $callbackParagrafo, $html);
 
-    // 4. Frases de Impacto: Estilo Citação de Poder
+    // 5. FRASES DE IMPACTO: Citações em Branco e Negrito com fundo escuro
     $html = str_ireplace(['<b>', '<strong>'], '<blockquote class="power-quote">', $html);
     $html = str_ireplace(['</b>', '</strong>'], '</blockquote>', $html);
 
     return $html;
 }
 
-$conteudoFinal = diagramarPremiumV5($conteudoBruto);
+$conteudoFinal = diagramarPremiumV6($conteudoBruto);
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -57,107 +62,114 @@ $conteudoFinal = diagramarPremiumV5($conteudoBruto);
         :root {
             --pure-black: #000000;
             --blood-red: #FF0000;
-            --white: #FFFFFF;
-            --text-dim: #BBBBBB;
+            --pure-white: #FFFFFF;
+            --text-gray: #CCCCCC;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
             background-color: var(--pure-black);
-            color: var(--text-dim);
+            color: var(--text-gray);
             font-family: 'Lora', serif;
             line-height: 1.9;
         }
 
-        .container { max-width: 800px; margin: 0 auto; padding: 80px 20px; }
+        .container { max-width: 850px; margin: 0 auto; padding: 80px 25px; }
 
         /* Capa */
         .header-main { text-align: center; margin-bottom: 120px; }
         .header-main h1 {
             font-family: 'Montserrat', sans-serif;
-            font-size: 5rem;
+            font-size: 5.5rem;
             color: var(--blood-red);
             text-transform: uppercase;
             font-weight: 900;
             line-height: 0.85;
-            letter-spacing: -3px;
+            letter-spacing: -4px;
         }
 
-        /* Títulos (Vermelhos e Maiores) */
+        /* Títulos (Vermelhos) */
         .chapter-title {
             font-family: 'Montserrat', sans-serif;
-            font-size: 3.5rem;
+            font-size: 3.8rem;
             color: var(--blood-red);
             text-transform: uppercase;
             font-weight: 900;
-            margin: 150px 0 40px 0;
+            margin: 140px 0 50px 0;
             line-height: 1;
+            border-bottom: 3px solid var(--blood-red);
+            padding-bottom: 10px;
         }
 
-        /* Subtítulos (BRANCO PURO E NEGRITO) */
+        /* SUBTÍTULOS: BRANCO ABSOLUTO E NEGRITO */
         .sub-title {
             font-family: 'Inter', sans-serif;
-            font-size: 2.2rem;
-            color: var(--white) !important; /* Força o branco total */
+            font-size: 2.4rem;
+            color: var(--pure-white) !important;
             font-weight: 900 !important;
             text-transform: uppercase;
-            margin: 80px 0 30px 0;
-            border-left: 12px solid var(--blood-red);
-            padding-left: 20px;
+            margin: 90px 0 35px 0;
+            display: block;
+            background: linear-gradient(90deg, rgba(255,0,0,0.2) 0%, transparent 100%);
+            padding: 15px;
+            border-left: 15px solid var(--blood-red);
         }
 
         .book-paragraph {
-            font-size: 1.4rem;
-            margin-bottom: 35px;
+            font-size: 1.45rem;
+            margin-bottom: 40px;
             text-align: justify;
+            color: var(--text-gray);
         }
 
-        /* Estilo das Imagens Cinematográficas */
+        /* Imagens Cinematográficas */
         .image-wrapper {
-            margin: 50px 0 80px 0;
-            border: 2px solid #1a1a1a;
+            margin: 60px 0 100px 0;
+            border: 1px solid #222;
             position: relative;
-            background: #0a0a0a;
+            background: #080808;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.8);
         }
         .cinematic-img {
             width: 100%;
             display: block;
-            filter: contrast(1.1) brightness(0.7);
+            filter: contrast(1.1) brightness(0.8);
         }
         .img-overlay {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
-            box-shadow: inset 0 0 100px rgba(0,0,0,0.9);
+            box-shadow: inset 0 0 120px rgba(0,0,0,1);
         }
 
-        /* Citações */
+        /* Citações de Impacto */
         .power-quote {
             font-family: 'Inter', sans-serif;
-            font-size: 1.8rem;
+            font-size: 1.9rem;
             font-weight: 900;
-            color: var(--white);
+            color: var(--pure-white);
             font-style: italic;
-            margin: 60px 0;
-            padding: 40px;
-            background: rgba(255,0,0,0.05);
-            border-top: 1px solid var(--blood-red);
-            border-bottom: 1px solid var(--blood-red);
+            margin: 70px 0;
+            padding: 50px;
+            background: #0a0a0a;
+            border-right: 8px solid var(--blood-red);
+            text-align: right;
         }
 
         .btn-save {
             position: fixed;
-            top: 25px; right: 25px;
+            top: 30px; right: 30px;
             background: var(--blood-red);
             color: white;
-            padding: 20px 40px;
+            padding: 22px 45px;
             font-family: 'Inter', sans-serif;
             font-weight: 900;
             border: none;
-            border-radius: 4px;
             cursor: pointer;
             z-index: 1000;
-            box-shadow: 0 0 20px rgba(255,0,0,0.3);
+            text-transform: uppercase;
+            font-size: 1.1rem;
+            box-shadow: 0 10px 30px rgba(255,0,0,0.4);
         }
 
         @media print {
@@ -168,13 +180,13 @@ $conteudoFinal = diagramarPremiumV5($conteudoBruto);
 </head>
 <body>
 
-    <button class="btn-save" onclick="window.print()">SALVAR ARQUIVO FINAL</button>
+    <button class="btn-save" onclick="window.print()">SALVAR EBOOK PREMIUM</button>
 
     <div class="container">
-        <div class="header-main">
+        <header class="header-main">
             <h1><?= htmlspecialchars($titulo) ?></h1>
-            <p style="color: #444; letter-spacing: 12px; margin-top: 15px;">TOP SECRET</p>
-        </div>
+            <p style="color: var(--blood-red); letter-spacing: 15px; margin-top: 20px; font-weight: bold;">HIGH IMPACT DOCUMENT</p>
+        </header>
 
         <article>
             <?= $conteudoFinal ?>
