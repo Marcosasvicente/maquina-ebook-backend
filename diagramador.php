@@ -1,223 +1,184 @@
 <?php
 /**
- * DIAGRAMADOR DARK PRO V4 - PREMIUM VISUAL EXPERIENCE
- * Foco: Estética de Cinema, Contraste Extremo e Imagens Funcionais.
+ * DIAGRAMADOR DARK PRO V5 - ULTRA-CONTRASTE & IMAGENS DINÂMICAS
  */
 
-$titulo = $_POST['tema_escolhido'] ?? 'ESTRATÉGIA DOMINANTE';
+$titulo = $_POST['tema_escolhido'] ?? 'O PODER DO SILÊNCIO';
 $conteudoBruto = $_POST['ebook_html'] ?? '<h1>Conteúdo não encontrado.</h1>';
 
-function diagramarPremium($html) {
-    // 1. Títulos de Capítulos (Vermelhos, Gigantes e Negrito)
+function diagramarPremiumV5($html) {
+    // 1. Títulos de Capítulos: Vermelho Sangue, Gigantes, Negrito
     $html = preg_replace('/<h2>(.*?)<\/h2>/i', '<h2 class="chapter-title">$1</h2>', $html);
 
-    // 2. Subtítulos (Brancos, Negrito e com Marcador)
-    // Converte h3 ou textos que a IA costuma mandar como subtítulos
+    // 2. SUBTÍTULOS: Branco Puro, Negrito, Fonte Inter (Corrigido para máxima visibilidade)
     $html = preg_replace('/<h3>(.*?)<\/h3>/i', '<h3 class="sub-title">$1</h3>', $html);
 
-    // 3. Estratégia de Imagens Contextuais (Nova Abordagem: Div com Background ou Imagem Direta com Fallback)
+    // 3. Mecanismo de Imagens: Nova Estratégia de Injeção Direta
     $contador = 0;
     $callbackParagrafo = function($matches) use (&$contador) {
         $texto = trim($matches[1]);
-        if (strlen(strip_tags($texto)) < 50) return "<p class='book-paragraph'>$texto</p>";
+        if (strlen(strip_tags($texto)) < 60) return "<p class='book-paragraph'>$texto</p>";
         
         $contador++;
-        // Extrai palavras-chave do parágrafo para o prompt
-        $keywords = urlencode(mb_strimwidth(strip_tags($texto), 0, 100));
-        $seed = rand(1, 100000);
+        // Tradução interna implícita para conceitos cinematográficos
+        $seed = rand(1, 9999);
+        $resumoPrompt = urlencode("dark cinematic noir, moody lighting, " . mb_strimwidth(strip_tags($texto), 0, 80));
         
-        // Prompt otimizado para não falhar e ser cinematográfico
-        $imgUrl = "https://image.pollinations.ai/prompt/cinematic-photography-dark-moody-masculine-noir-style-{$keywords}?width=1080&height=540&nologo=true&seed={$seed}";
+        $imgUrl = "https://pollinations.ai/p/{$resumoPrompt}?width=1080&height=600&seed={$seed}&model=flux&nologo=true";
 
-        // Retorna o parágrafo com a imagem logo abaixo, estilizada com moldura
         return "
-            <div class='content-section'>
+            <div class='paragraph-group'>
                 <p class='book-paragraph'>{$texto}</p>
-                <div class='premium-img-frame'>
-                    <img src='{$imgUrl}' class='premium-img' alt='Visual Insight' loading='lazy' onerror='this.style.display=\"none\"'>
-                    <div class='img-shadow'></div>
+                <div class='image-wrapper'>
+                    <img src='{$imgUrl}' class='cinematic-img' alt='Visual Insight' loading='lazy'>
+                    <div class='img-overlay'></div>
                 </div>
             </div>";
     };
 
-    // Aplica a lógica nos parágrafos
     $html = preg_replace_callback('/<p>(.*?)<\/p>/i', $callbackParagrafo, $html);
 
-    // 4. Frases de Impacto (Blockquotes Estilizados)
-    $html = str_ireplace(['<b>', '<strong>'], '<blockquote class="impact-quote">', $html);
+    // 4. Frases de Impacto: Estilo Citação de Poder
+    $html = str_ireplace(['<b>', '<strong>'], '<blockquote class="power-quote">', $html);
     $html = str_ireplace(['</b>', '</strong>'], '</blockquote>', $html);
 
     return $html;
 }
 
-$conteudoFinal = diagramarPremium($conteudoBruto);
+$conteudoFinal = diagramarPremiumV5($conteudoBruto);
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
     <title><?= htmlspecialchars($titulo) ?></title>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@900&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@900&family=Lora:ital,wght@0,400;0,700;1,400&family=Inter:wght@700;900&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-black: #050505;
-            --accent-red: #E60000;
-            --sub-white: #FFFFFF;
-            --text-gray: #B0B0B0;
+            --pure-black: #000000;
+            --blood-red: #FF0000;
+            --white: #FFFFFF;
+            --text-dim: #BBBBBB;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            background-color: var(--bg-black);
-            color: var(--text-gray);
-            font-family: 'Playfair Display', serif; /* Fonte de livro clássico */
-            line-height: 1.8;
-            -webkit-font-smoothing: antialiased;
+            background-color: var(--pure-black);
+            color: var(--text-dim);
+            font-family: 'Lora', serif;
+            line-height: 1.9;
         }
 
-        /* Textura de fundo sutil */
-        body::before {
-            content: "";
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background-image: url('https://www.transparenttextures.com/patterns/carbon-fibre.png');
-            opacity: 0.1;
-            pointer-events: none;
-            z-index: -1;
-        }
+        .container { max-width: 800px; margin: 0 auto; padding: 80px 20px; }
 
-        .book-container {
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 100px 25px;
-        }
-
-        /* Capa / Título Principal */
-        .main-header {
-            text-align: center;
-            margin-bottom: 150px;
-        }
-
-        .main-header h1 {
+        /* Capa */
+        .header-main { text-align: center; margin-bottom: 120px; }
+        .header-main h1 {
             font-family: 'Montserrat', sans-serif;
-            font-size: 4.5rem;
-            color: var(--accent-red);
+            font-size: 5rem;
+            color: var(--blood-red);
             text-transform: uppercase;
             font-weight: 900;
-            line-height: 1;
-            letter-spacing: -2px;
-            margin-bottom: 20px;
+            line-height: 0.85;
+            letter-spacing: -3px;
         }
 
-        /* Títulos de Capítulos (Vermelho, Negrito, Grande) */
+        /* Títulos (Vermelhos e Maiores) */
         .chapter-title {
             font-family: 'Montserrat', sans-serif;
-            font-size: 3rem;
-            color: var(--accent-red);
+            font-size: 3.5rem;
+            color: var(--blood-red);
             text-transform: uppercase;
             font-weight: 900;
-            margin: 120px 0 50px 0;
-            border-bottom: 2px solid var(--accent-red);
-            padding-bottom: 10px;
-            text-align: left;
+            margin: 150px 0 40px 0;
+            line-height: 1;
         }
 
-        /* Subtítulos (Branco, Negrito) */
+        /* Subtítulos (BRANCO PURO E NEGRITO) */
         .sub-title {
             font-family: 'Inter', sans-serif;
-            font-size: 1.8rem;
-            color: var(--sub-white);
-            font-weight: 700;
+            font-size: 2.2rem;
+            color: var(--white) !important; /* Força o branco total */
+            font-weight: 900 !important;
             text-transform: uppercase;
-            margin: 60px 0 30px 0;
-            letter-spacing: 1px;
+            margin: 80px 0 30px 0;
+            border-left: 12px solid var(--blood-red);
+            padding-left: 20px;
         }
 
         .book-paragraph {
-            font-size: 1.35rem;
-            margin-bottom: 25px;
+            font-size: 1.4rem;
+            margin-bottom: 35px;
             text-align: justify;
-            color: var(--text-gray);
         }
 
-        /* Frame de Imagem Premium */
-        .premium-img-frame {
-            margin: 45px 0;
-            border-radius: 8px;
-            overflow: hidden;
-            border: 1px solid rgba(255,255,255,0.1);
-            background: #111;
+        /* Estilo das Imagens Cinematográficas */
+        .image-wrapper {
+            margin: 50px 0 80px 0;
+            border: 2px solid #1a1a1a;
             position: relative;
+            background: #0a0a0a;
         }
-
-        .premium-img {
+        .cinematic-img {
             width: 100%;
-            height: auto;
             display: block;
-            filter: contrast(1.1) brightness(0.8) grayscale(0.3);
-            transition: all 0.5s ease;
+            filter: contrast(1.1) brightness(0.7);
+        }
+        .img-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            box-shadow: inset 0 0 100px rgba(0,0,0,0.9);
         }
 
-        .premium-img:hover {
-            filter: contrast(1.2) brightness(1);
-        }
-
-        /* Citação de Impacto */
-        .impact-quote {
+        /* Citações */
+        .power-quote {
             font-family: 'Inter', sans-serif;
-            font-size: 1.6rem;
-            font-weight: 700;
+            font-size: 1.8rem;
+            font-weight: 900;
+            color: var(--white);
             font-style: italic;
-            color: var(--sub-white);
             margin: 60px 0;
             padding: 40px;
-            background: linear-gradient(90deg, #111 0%, #050505 100%);
-            border-left: 6px solid var(--accent-red);
-            box-shadow: 20px 20px 60px rgba(0,0,0,0.5);
+            background: rgba(255,0,0,0.05);
+            border-top: 1px solid var(--blood-red);
+            border-bottom: 1px solid var(--blood-red);
         }
 
-        .btn-print {
+        .btn-save {
             position: fixed;
-            top: 20px;
-            right: 20px;
-            background: var(--accent-red);
-            color: #fff;
-            padding: 15px 30px;
-            border: none;
-            border-radius: 5px;
+            top: 25px; right: 25px;
+            background: var(--blood-red);
+            color: white;
+            padding: 20px 40px;
             font-family: 'Inter', sans-serif;
             font-weight: 900;
-            text-transform: uppercase;
+            border: none;
+            border-radius: 4px;
             cursor: pointer;
-            z-index: 9999;
-            box-shadow: 0 10px 30px rgba(230, 0, 0, 0.4);
+            z-index: 1000;
+            box-shadow: 0 0 20px rgba(255,0,0,0.3);
         }
 
         @media print {
-            .btn-print { display: none; }
-            body { background: #000; }
+            .btn-save { display: none; }
             .chapter-title { page-break-before: always; }
         }
     </style>
 </head>
 <body>
 
-    <button class="btn-print" onclick="window.print()">SALVAR ARQUIVO FINAL</button>
+    <button class="btn-save" onclick="window.print()">SALVAR ARQUIVO FINAL</button>
 
-    <div class="book-container">
-        <header class="main-header">
+    <div class="container">
+        <div class="header-main">
             <h1><?= htmlspecialchars($titulo) ?></h1>
-            <p style="font-family: 'Inter'; letter-spacing: 10px; font-size: 0.8rem; color: var(--accent-red);">DOCUMENTO DE ALTO IMPACTO</p>
-        </header>
+            <p style="color: #444; letter-spacing: 12px; margin-top: 15px;">TOP SECRET</p>
+        </div>
 
         <article>
             <?= $conteudoFinal ?>
         </article>
-
-        <footer style="margin-top: 150px; text-align: center; font-family: 'Inter'; font-size: 0.7rem; opacity: 0.4;">
-            PROPRIEDADE EXCLUSIVA - TODOS OS DIREITOS RESERVADOS
-        </footer>
     </div>
 
 </body>
