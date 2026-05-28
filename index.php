@@ -9,7 +9,7 @@ ini_set('max_execution_time', 600);
 set_time_limit(600);
 
 // Configuração da API
-$apiKey = trim(getenv('GROQ_API_KEY') ?: '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');
+$apiKey = trim(getenv('GROQ_API_KEY') ?: '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');
 
 $sugestoes = null;
 $ebook_html = null;
