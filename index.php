@@ -1,5 +1,5 @@
 <?php
-// 1. Verificação de Rota (Deve ser a primeira coisa no arquivo)
+// 1. Verificação de Rota
 if (strpos($_SERVER['REQUEST_URI'], 'diagramador.php') !== false) {
     include 'diagramador.php';
     exit;
@@ -8,9 +8,9 @@ if (strpos($_SERVER['REQUEST_URI'], 'diagramador.php') !== false) {
 ini_set('max_execution_time', 600); 
 set_time_limit(600);
 
-// Configuração da API
-$apiKey = trim(getenv('GEMINI_API_KEY') ?: 'AIzaSyBseYvTfNEvlOMFrk6Khu3YnSp
-CC0ZoA6Y');
+// Configuração da API GEMINI
+// Nota: Removi a quebra de linha da sua chave para evitar erros de conexão
+$apiKey = trim(getenv('GEMINI_API_KEY') ?: 'AIzaSyBseYvTfNEvlOMFrk6Khu3YnSpCC0ZoA6Y');
 
 $sugestoes = null;
 $ebook_html = null;
@@ -35,64 +35,79 @@ if (!empty($videoUrl) && empty($textoBase)) {
     }
 }
 
-// PASSO 1: Gerar Sugestões Virais (Acionado ao clicar em GERAR ESTRATÉGIAS)
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['buscar_ideias']) && !empty($videoUrl)) {
-    $promptIdeias = "Com base no conteúdo deste vídeo, crie 5 títulos de Ebooks inéditos e magnéticos para o nicho de masculinidade e comportamento. Evite clichês. Escreva apenas os títulos, um por linha. Conteúdo base: " . (mb_strimwidth($textoBase, 0, 5000, "..."));
+/**
+ * Função Auxiliar para chamar a API do Gemini
+ */
+function callGemini($prompt, $key) {
+    $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" . $key;
     
-    $payload = ["model" => "llama-3.3-70b-versatile", "messages" => [["role" => "user", "content" => $promptIdeias]], "temperature" => 0.9];
+    $payload = [
+        "contents" => [
+            [
+                "parts" => [
+                    ["text" => $prompt]
+                ]
+            ]
+        ],
+        "generationConfig" => [
+            "temperature" => 0.7,
+            "maxOutputTokens" => 8192
+        ]
+    ];
 
-    $ch = curl_init("https://api.groq.com/openai/v1/chat/completions");
+    $ch = curl_init($url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
-    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json', 'Authorization: Bearer ' . $apiKey]);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
     
     $response = curl_exec($ch);
     $result = json_decode($response, true);
     curl_close($ch);
 
-    $conteudoResposta = $result['choices'][0]['message']['content'] ?? '';
-    $linhas = explode("\n", str_replace("\r", "", trim($conteudoResposta)));
+    return $result['candidates'][0]['content']['parts'][0]['text'] ?? null;
+}
+
+// PASSO 1: Gerar Sugestões Virais
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['buscar_ideias']) && !empty($videoUrl)) {
+    $promptIdeias = "Com base no conteúdo deste vídeo, crie 5 títulos de Ebooks inéditos e magnéticos para o nicho de masculinidade e comportamento. Escreva apenas os títulos, um por linha, sem números. Conteúdo base: " . (mb_strimwidth($textoBase, 0, 5000, "..."));
     
-    foreach ($linhas as $linha) {
-        $linhaLimpa = preg_replace('/^[0-9]+[\.\)\s\-]+/', '', trim($linha));
-        if (!empty($linhaLimpa) && strlen($linhaLimpa) > 5) {
-            $sugestoes[] = $linhaLimpa;
+    $resposta = callGemini($promptIdeias, $apiKey);
+
+    if ($resposta) {
+        $linhas = explode("\n", str_replace("\r", "", trim($resposta)));
+        foreach ($linhas as $linha) {
+            $linhaLimpa = preg_replace('/^[0-9]+[\.\)\s\-]+/', '', trim($linha));
+            if (!empty($linhaLimpa) && strlen($linhaLimpa) > 5) {
+                $sugestoes[] = $linhaLimpa;
+            }
         }
+        if ($sugestoes) $sugestoes = array_slice($sugestoes, 0, 5);
+    } else {
+        $erro = "Falha na API Gemini ao buscar ideias. Verifique a chave.";
     }
-    if ($sugestoes) $sugestoes = array_slice($sugestoes, 0, 5);
 }
 
 // PASSO 2: Gerar Conteúdo do Ebook
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['criar_ebook']) && !empty($_POST['tema_escolhido'])) {
     $tema = $_POST['tema_escolhido'];
-    $promptEbook = "Aja como um Ghostwriter de Elite especialista em Psicologia Dark. Escreva um EBOOK EXTENSO em HTML sobre: '$tema'. CONTEXTO: $textoBase. DIRETRIZES: Introdução + 20 CAPÍTULOS + Conclusão. Use h2 para títulos, p para texto e b para frases de impacto.";
+    $promptEbook = "Aja como um Ghostwriter de Elite especialista em Psicologia Dark. Escreva um EBOOK EXTENSO em HTML sobre o tema: '$tema'. CONTEXTO DO VÍDEO: $textoBase. DIRETRIZES: Introdução + 20 CAPÍTULOS detalhados + Conclusão. Use apenas tags HTML: h2 para títulos, p para texto e b para frases de impacto. Não use markdown como ```html.";
 
-    $payload = ["model" => "llama-3.3-70b-versatile", "messages" => [["role" => "user", "content" => $promptEbook]], "temperature" => 0.8, "max_tokens" => 8000];
+    $respostaEbook = callGemini($promptEbook, $apiKey);
 
-    $ch = curl_init("https://api.groq.com/openai/v1/chat/completions");
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
-    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json', 'Authorization: Bearer ' . $apiKey]);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 500);
-    
-    $response = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-
-    if ($httpCode === 200) {
-        $result = json_decode($response, true);
-        $ebook_html = str_replace(['```html', '```', '**'], ['', '', '<b>'], $result['choices'][0]['message']['content']);
-    } else { $erro = "Erro ao forjar conteúdo. Verifique sua chave de API."; }
+    if ($respostaEbook) {
+        $ebook_html = str_replace(['```html', '```', '##', '**'], ['', '', '', '<b>'], $respostaEbook);
+    } else {
+        $erro = "Erro ao gerar o Ebook com Gemini. Verifique os limites da chave.";
+    }
 }
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>EbookForge V4 - Deep Content</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>EbookForge V4 - Gemini Edition</title>
+    <script src="[https://cdn.tailwindcss.com](https://cdn.tailwindcss.com)"></script>
     <style>
         .prose h2 { color: #5D2A18; font-weight: bold; margin-top: 40px; font-size: 1.8rem; border-bottom: 2px solid #5D2A18; padding-bottom: 10px; }
         .prose p { margin-bottom: 20px; line-height: 1.8; font-size: 1.1rem; color: #333; text-align: justify; }
@@ -100,7 +115,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['criar_ebook']) && !em
 </head>
 <body class="bg-[#fdfaf7] py-10 px-4">
     <div class="max-w-4xl mx-auto bg-white p-10 rounded-2xl shadow-2xl border border-stone-200">
-        <h1 class="text-4xl font-black text-[#5D2A18] mb-8 text-center uppercase tracking-tighter">EbookForge <span class="text-amber-600">PRO</span></h1>
+        <h1 class="text-4xl font-black text-[#5D2A18] mb-8 text-center uppercase tracking-tighter">EbookForge <span class="text-amber-600">GEMINI</span></h1>
         
         <form method="POST" class="space-y-4 mb-12">
             <input type="hidden" name="buscar_ideias" value="1">
