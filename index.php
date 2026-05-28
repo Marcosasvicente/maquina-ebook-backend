@@ -1,7 +1,16 @@
 <?php
+// 1. BLINDAGEM DE ROTA: Garante que o servidor acesse o diagramador sem loops e mude de página corretamente
+if (strpos($_SERVER['REQUEST_URI'], 'diagramador.php') !== false) {
+    if (file_exists('diagramador.php')) {
+        include 'diagramador.php';
+        exit;
+    }
+}
+
 ini_set('max_execution_time', 600); // Aumentado para 10 minutos devido ao volume de palavras
 set_time_limit(600);
 
+// Configuração da API GROQ (Restaurada)
 $apiKey = trim(getenv('GROQ_API_KEY') ?: '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');
 
 $sugestoes = null;
@@ -49,7 +58,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['buscar_ideias']) && !
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['criar_ebook']) && !empty($_POST['tema_escolhido'])) {
     $tema = $_POST['tema_escolhido'];
     
-    // PROMPT REFORMULADO PARA EVITAR GENERICISMO E GARANTIR EXTENSÃO
     $promptEbook = "Aja como um Ghostwriter de Elite. Escreva um EBOOK EXTENSO (meta de 6000 palavras) em HTML sobre: '$tema'.
     
     CONTEXTO DO VÍDEO: $textoBase
@@ -64,8 +72,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['criar_ebook']) && !em
     $payload = [
         "model" => "llama-3.3-70b-versatile",
         "messages" => [["role" => "user", "content" => $promptEbook]],
-        "temperature" => 0.8, // Mais criatividade para evitar o óbvio
-        "max_tokens" => 8000  // Máximo para permitir as ~6000 palavras
+        "temperature" => 0.8,
+        "max_tokens" => 8000 
     ];
 
     $ch = curl_init("https://api.groq.com/openai/v1/chat/completions");
@@ -73,7 +81,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['criar_ebook']) && !em
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
     curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json', 'Authorization: Bearer ' . $apiKey]);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 500); // Aguarda até 8 minutos
+    curl_setopt($ch, CURLOPT_TIMEOUT, 500); 
     
     $response = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -131,7 +139,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['criar_ebook']) && !em
             <div class="mt-12 p-10 border-t-8 border-[#5D2A18] bg-[#fffefc] rounded-xl prose max-w-none shadow-2xl">
                 <?php echo $ebook_html; ?>
             </div>
-            <button onclick="window.print()" class="w-full mt-8 bg-amber-600 text-white p-5 rounded-2xl font-bold text-xl shadow-lg">EXPORTAR INFOPRODUTO PREMIUM (PDF)</button>
+
+            <!-- NOVA FUNÇÃO: ENVIAR PARA O DIAGRAMADOR -->
+            <form action="diagramador.php" method="POST" target="_blank" class="mt-8">
+                <input type="hidden" name="tema_escolhido" value="<?php echo htmlspecialchars($tema); ?>">
+                <textarea name="ebook_html" style="display:none;"><?php echo htmlspecialchars($ebook_html); ?></textarea>
+                <button type="submit" style="background-color: #BC0000; color: white; padding: 25px; width: 100%; border-radius: 15px; font-weight: bold; font-size: 1.5rem; cursor: pointer; box-shadow: 0 10px 20px rgba(0,0,0,0.3);">
+                    ABRIR DIAGRAMAÇÃO DARK →
+                </button>
+            </form>
         <?php endif; ?>
 
         <?php if ($erro): ?>
