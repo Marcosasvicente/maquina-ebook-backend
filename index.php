@@ -9,7 +9,7 @@ ini_set('max_execution_time', 600);
 set_time_limit(600);
 
 // Configuração da API
-$apiKey = trim(getenv('GROQ_API_KEY') ?: 'AIzaSyBseYvTfNEvlOMFrk6Khu3YnSp
+$apiKey = trim(getenv('GEMINI_API_KEY') ?: 'AIzaSyBseYvTfNEvlOMFrk6Khu3YnSp
 CC0ZoA6Y');
 
 $sugestoes = null;
