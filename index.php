@@ -129,13 +129,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['criar_ebook']) && !em
             </div>
 
             <form action="diagramador.php" method="POST" target="_blank" class="mt-8">
-                <input type="hidden" name="tema_escolhido" value="<?php echo htmlspecialchars($tema); ?>">
-                <textarea name="ebook_html" style="display:none;"><?php echo htmlspecialchars($ebook_html); ?></textarea>
-                
-                <button type="submit" class="w-full bg-[#BC0000] text-white p-6 rounded-2xl font-bold text-2xl shadow-xl hover:bg-red-700 hover:scale-[1.02] transition-all">
-                    ABRIR DIAGRAMAÇÃO DARK →
-                </button>
-            </form>
+    
+    <input type="hidden" name="tema_escolhido" value="<?php echo htmlspecialchars($tema); ?>">
+    
+    <textarea name="ebook_html" style="display:none;"><?php echo htmlspecialchars($ebook_html); ?></textarea>
+    
+    <button type="submit" style="background-color: #BC0000; color: white; padding: 25px; width: 100%; border-radius: 15px; font-weight: bold; font-size: 1.5rem; cursor: pointer; box-shadow: 0 10px 20px rgba(0,0,0,0.3);">
+        ABRIR DIAGRAMAÇÃO DARK →
+    </button>
+
+</form>
+
         <?php endif; ?>
 
         <?php if ($erro): ?>
