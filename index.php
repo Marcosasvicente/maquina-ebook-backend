@@ -1,104 +1,70 @@
 <?php
-// 1. Verificação de Rota
-if (strpos($_SERVER['REQUEST_URI'], 'diagramador.php') !== false) {
-    include 'diagramador.php';
-    exit;
-}
+// --- CONFIGURAÇÃO DE SEGURANÇA E CHAVE API DA GROQ ---
+$apiKey = trim(getenv('GROQ_API_KEY') ?: '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');
 
-ini_set('max_execution_time', 600); 
-set_time_limit(600);
-
-// Configuração da API GEMINI
-// Nota: Removi a quebra de linha da sua chave para evitar erros de conexão
-$apiKey = trim(getenv('GEMINI_API_KEY') ?: 'AIzaSyBseYvTfNEvlOMFrk6Khu3YnSpCC0ZoA6Y');
-
-$sugestoes = null;
 $ebook_html = null;
 $erro = null;
 
-$videoUrl = $_POST['videoUrl'] ?? $_POST['chosen_url'] ?? '';
-$textoBase = $_POST['textoBase'] ?? '';
-
-// Captura da Transcrição do YouTube
-if (!empty($videoUrl) && empty($textoBase)) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['videoUrl'])) {
+    $videoUrl = $_POST['videoUrl'];
+    
     preg_match("/(?:v=|\/)([a-zA-Z0-9_-]{11})/", $videoUrl, $matches);
     $videoId = $matches[1] ?? null;
+
+    $textoBase = "";
     if ($videoId) {
         $transcriptData = @file_get_contents("https://subtitles-youtube.vercel.app/api/transcript?videoId=" . $videoId);
-        if ($transcriptData) {
-            $transcript = json_decode($transcriptData, true);
-            if ($transcript && is_array($transcript)) {
-                $textoBase = ""; 
-                foreach ($transcript as $line) { $textoBase .= $line['text'] . " "; }
-            }
+        $transcript = json_decode($transcriptData, true);
+        if ($transcript && is_array($transcript)) {
+            foreach ($transcript as $line) { $textoBase .= $line['text'] . " "; }
         }
     }
-}
 
-/**
- * Função Auxiliar para chamar a API do Gemini
- */
-function callGemini($prompt, $key) {
-    $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" . $key;
+    // --- NOVAS INSTRUÇÕES ALINHADAS ---
+    // 1. Identificação automática do assunto
+    // 2. Público-alvo universal
+    // 3. Estrutura de no mínimo 20 capítulos
+    $promptTexto = "Aja como um Editor de Infoprodutos Senior. 
+    PASSO 1: Analise o conteúdo deste vídeo e identifique o tema central: $videoUrl.
+    PASSO 2: Com base na transcrição abaixo, crie um EBOOK COMPLETO formatado em HTML.
+    
+    REGRAS OBRIGATÓRIAS:
+    - O público é UNIVERSAL (adapte a linguagem para ser acessível a qualquer pessoa).
+    - ESTRUTURA: Introdução robusta + MÍNIMO DE 20 CAPITULOS DISTINTOS E DETALHADOS + Conclusão prática.
+    - ESTILO: Use títulos h1 e h2 com a cor #5D2A18. 
+    - Formate parágrafos com a tag <p>.
+    
+    Transcrição do vídeo: $textoBase";
     
     $payload = [
-        "contents" => [
-            [
-                "parts" => [
-                    ["text" => $prompt]
-                ]
-            ]
-        ],
-        "generationConfig" => [
-            "temperature" => 0.7,
-            "maxOutputTokens" => 8192
-        ]
+        "model" => "llama-3.3-70b-versatile",
+        "messages" => [["role" => "user", "content" => $promptTexto]],
+        "temperature" => 0.6, // Reduzido levemente para manter o foco em 20 capítulos sem viajar demais
+        "max_tokens" => 4000  // Aumentado para suportar o texto longo de 20 capítulos
     ];
 
-    $ch = curl_init($url);
+    $ch = curl_init("https://api.groq.com/openai/v1/chat/completions");
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
-    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Content-Type: application/json',
+        'Authorization: Bearer ' . $apiKey
+    ]);
     
     $response = curl_exec($ch);
-    $result = json_decode($response, true);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
 
-    return $result['candidates'][0]['content']['parts'][0]['text'] ?? null;
-}
-
-// PASSO 1: Gerar Sugestões Virais
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['buscar_ideias']) && !empty($videoUrl)) {
-    $promptIdeias = "Com base no conteúdo deste vídeo, crie 5 títulos de Ebooks inéditos e magnéticos para o nicho de masculinidade e comportamento. Escreva apenas os títulos, um por linha, sem números. Conteúdo base: " . (mb_strimwidth($textoBase, 0, 5000, "..."));
+    $result = json_decode($response, true);
     
-    $resposta = callGemini($promptIdeias, $apiKey);
-
-    if ($resposta) {
-        $linhas = explode("\n", str_replace("\r", "", trim($resposta)));
-        foreach ($linhas as $linha) {
-            $linhaLimpa = preg_replace('/^[0-9]+[\.\)\s\-]+/', '', trim($linha));
-            if (!empty($linhaLimpa) && strlen($linhaLimpa) > 5) {
-                $sugestoes[] = $linhaLimpa;
-            }
-        }
-        if ($sugestoes) $sugestoes = array_slice($sugestoes, 0, 5);
+    if ($httpCode === 200) {
+        $ebookFinal = $result['choices'][0]['message']['content'];
+        // Limpeza de Markdown e formatação de negrito
+        $ebook_html = str_replace(['```html', '```', '**'], ['', '', '<b>'], $ebookFinal);
     } else {
-        $erro = "Falha na API Gemini ao buscar ideias. Verifique a chave.";
-    }
-}
-
-// PASSO 2: Gerar Conteúdo do Ebook
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['criar_ebook']) && !empty($_POST['tema_escolhido'])) {
-    $tema = $_POST['tema_escolhido'];
-    $promptEbook = "Aja como um Ghostwriter de Elite especialista em Psicologia Dark. Escreva um EBOOK EXTENSO em HTML sobre o tema: '$tema'. CONTEXTO DO VÍDEO: $textoBase. DIRETRIZES: Introdução + 20 CAPÍTULOS detalhados + Conclusão. Use apenas tags HTML: h2 para títulos, p para texto e b para frases de impacto. Não use markdown como ```html.";
-
-    $respostaEbook = callGemini($promptEbook, $apiKey);
-
-    if ($respostaEbook) {
-        $ebook_html = str_replace(['```html', '```', '##', '**'], ['', '', '', '<b>'], $respostaEbook);
-    } else {
-        $erro = "Erro ao gerar o Ebook com Gemini. Verifique os limites da chave.";
+        $msg_erro = $result['error']['message'] ?? 'Erro desconhecido';
+        $erro = "Erro na Geração: $msg_erro";
     }
 }
 ?>
@@ -106,58 +72,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['criar_ebook']) && !em
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>EbookForge V4 - Gemini Edition</title>
-    <script src="[https://cdn.tailwindcss.com](https://cdn.tailwindcss.com)"></script>
+    <title>EbookForge V2 - Gerador Universal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        .prose h2 { color: #5D2A18; font-weight: bold; margin-top: 40px; font-size: 1.8rem; border-bottom: 2px solid #5D2A18; padding-bottom: 10px; }
-        .prose p { margin-bottom: 20px; line-height: 1.8; font-size: 1.1rem; color: #333; text-align: justify; }
+        .prose h1, .prose h2 { color: #5D2A18; font-weight: bold; margin-top: 20px; font-size: 1.5rem; }
+        .prose p { margin-bottom: 15px; line-height: 1.6; color: #444; }
     </style>
 </head>
 <body class="bg-[#fdfaf7] py-10 px-4">
-    <div class="max-w-4xl mx-auto bg-white p-10 rounded-2xl shadow-2xl border border-stone-200">
-        <h1 class="text-4xl font-black text-[#5D2A18] mb-8 text-center uppercase tracking-tighter">EbookForge <span class="text-amber-600">GEMINI</span></h1>
+    <div class="max-w-4xl mx-auto bg-white p-8 rounded-2xl shadow-xl border border-stone-200">
+        <h1 class="text-4xl font-extrabold text-[#5D2A18] mb-2 text-center">EbookForge V2</h1>
+        <p class="text-center text-stone-500 mb-8">Identificação Automática | 20+ Capítulos | Público Universal</p>
         
-        <form method="POST" class="space-y-4 mb-12">
-            <input type="hidden" name="buscar_ideias" value="1">
-            <input type="url" name="videoUrl" required value="<?= htmlspecialchars($videoUrl) ?>" placeholder="Cole o link do YouTube aqui..." class="w-full p-5 border-2 rounded-2xl outline-none focus:border-amber-600 shadow-inner">
-            <button type="submit" class="w-full bg-[#5D2A18] text-white p-5 rounded-2xl font-bold text-xl hover:scale-[1.01] transition-transform shadow-lg">GERAR ESTRATÉGIAS INÉDITAS</button>
+        <form method="POST" class="space-y-4 mb-10">
+            <input type="url" name="videoUrl" required placeholder="Cole o link do YouTube aqui..." 
+                   class="w-full p-4 border-2 border-stone-200 rounded-xl focus:border-[#5D2A18] outline-none transition-all">
+            <button type="submit" class="w-full bg-[#5D2A18] text-white p-4 rounded-xl font-bold text-lg hover:brightness-110 transition-all shadow-lg">
+                FORJAR EBOOK COMPLETO
+            </button>
         </form>
 
-        <?php if ($sugestoes): ?>
-            <div class="space-y-4 animate-fade-in">
-                <h2 class="text-xl font-bold text-stone-800">🔥 Escolha um título para o seu Ebook:</h2>
-                <?php foreach ($sugestoes as $opcao): ?>
-                <form method="POST">
-                    <input type="hidden" name="criar_ebook" value="1">
-                    <input type="hidden" name="chosen_url" value="<?= htmlspecialchars($videoUrl) ?>">
-                    <input type="hidden" name="textoBase" value="<?= htmlspecialchars($textoBase) ?>">
-                    <input type="hidden" name="tema_escolhido" value="<?= htmlspecialchars($opcao) ?>">
-                    <button type="submit" class="w-full text-left p-5 bg-stone-50 border-2 border-stone-100 rounded-2xl hover:border-amber-600 hover:bg-white transition-all font-bold text-stone-700 shadow-sm flex justify-between items-center">
-                        <?= htmlspecialchars($opcao) ?>
-                        <span class="text-amber-600">GERAR AGORA →</span>
-                    </button>
-                </form>
-                <?php endforeach; ?>
-            </div>
-        <?php endif; ?>
-
         <?php if ($ebook_html): ?>
-            <div class="mt-12 p-10 border-t-8 border-[#5D2A18] bg-[#fffefc] rounded-xl prose max-w-none shadow-2xl">
-                <?= $ebook_html ?>
+            <div class="p-8 border-t-4 border-[#5D2A18] bg-stone-50 rounded-b-xl prose max-w-none">
+                <?php echo $ebook_html; ?>
             </div>
-
-            <form action="diagramador.php" method="POST" target="_blank" class="mt-8">
-                <input type="hidden" name="tema_escolhido" value="<?= htmlspecialchars($tema) ?>">
-                <textarea name="ebook_html" style="display:none;"><?= htmlspecialchars($ebook_html) ?></textarea>
-                <button type="submit" style="background-color: #BC0000; color: white; padding: 25px; width: 100%; border-radius: 15px; font-weight: bold; font-size: 1.5rem; cursor: pointer; box-shadow: 0 10px 20px rgba(0,0,0,0.3);">
-                    ABRIR DIAGRAMAÇÃO DARK →
-                </button>
-            </form>
+            <div class="mt-6 flex gap-4">
+                <button onclick="window.print()" class="flex-1 bg-white border-2 border-[#5D2A18] text-[#5D2A18] p-3 rounded-lg font-bold">PDF / IMPRIMIR</button>
+            </div>
         <?php endif; ?>
 
         <?php if ($erro): ?>
-            <div class="mt-6 p-5 bg-red-50 text-red-700 rounded-2xl border-2 border-red-100 font-bold text-center"><?= $erro ?></div>
+            <div class="mt-4 p-4 bg-red-50 text-red-700 rounded-xl border border-red-200 font-medium"><?php echo $erro; ?></div>
         <?php endif; ?>
     </div>
 </body>
 </html>
+Y
