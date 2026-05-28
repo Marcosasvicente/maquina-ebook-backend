@@ -49,7 +49,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['buscar_ideias']) && !
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['criar_ebook']) && !empty($_POST['tema_escolhido'])) {
     $tema = $_POST['tema_escolhido'];
     
-    // PROMPT REFORMULADO PARA EVITAR GENERICISMO E GARANTIR EXTENSÃO
     $promptEbook = "Aja como um Ghostwriter de Elite. Escreva um EBOOK EXTENSO (meta de 6000 palavras) em HTML sobre: '$tema'.
     
     CONTEXTO DO VÍDEO: $textoBase
@@ -64,8 +63,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['criar_ebook']) && !em
     $payload = [
         "model" => "llama-3.3-70b-versatile",
         "messages" => [["role" => "user", "content" => $promptEbook]],
-        "temperature" => 0.8, // Mais criatividade para evitar o óbvio
-        "max_tokens" => 8000  // Máximo para permitir as ~6000 palavras
+        "temperature" => 0.8,
+        "max_tokens" => 8000
     ];
 
     $ch = curl_init("https://api.groq.com/openai/v1/chat/completions");
@@ -73,7 +72,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['criar_ebook']) && !em
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
     curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json', 'Authorization: Bearer ' . $apiKey]);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 500); // Aguarda até 8 minutos
+    curl_setopt($ch, CURLOPT_TIMEOUT, 500);
     
     $response = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -131,7 +130,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['criar_ebook']) && !em
             <div class="mt-12 p-10 border-t-8 border-[#5D2A18] bg-[#fffefc] rounded-xl prose max-w-none shadow-2xl">
                 <?php echo $ebook_html; ?>
             </div>
-            <button onclick="window.print()" class="w-full mt-8 bg-amber-600 text-white p-5 rounded-2xl font-bold text-xl shadow-lg">EXPORTAR INFOPRODUTO PREMIUM (PDF)</button>
+
+            <div class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <button onclick="window.print()" class="bg-stone-800 text-white p-5 rounded-2xl font-bold text-lg shadow-lg hover:bg-black transition-all">MODO IMPRESSÃO</button>
+                
+                <form action="diagramador.php" method="POST" target="_blank">
+                    <input type="hidden" name="tema_escolhido" value="<?php echo htmlspecialchars($tema); ?>">
+                    <input type="hidden" name="ebook_html" value="<?php echo htmlspecialchars($ebook_html); ?>">
+                    <button type="submit" class="w-full bg-[#BC0000] text-white p-5 rounded-2xl font-bold text-xl shadow-lg hover:bg-red-700 transition-all">
+                        DIAGRAMAÇÃO PSICOLOGIA DARK →
+                    </button>
+                </form>
+            </div>
         <?php endif; ?>
 
         <?php if ($erro): ?>
