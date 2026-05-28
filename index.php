@@ -1,4 +1,10 @@
 <?php
+// Verifica se a URL contém diagramador.php e força o carregamento dele
+if (strpos($_SERVER['REQUEST_URI'], 'diagramador.php') !== false) {
+    include 'diagramador.php';
+    exit;
+}
+?>
 ini_set('max_execution_time', 600); 
 set_time_limit(600);
 
