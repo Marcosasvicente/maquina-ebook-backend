@@ -1,9 +1,13 @@
 <?php
-/**
- * INDEX.PHP - GERADOR DE CONTEÚDO PREMIUM V7
- * Configurado com Protocolos de Retenção e Engenharia de Vendas
- */
+// 1. BLINDAGEM DE ROTA: Garante que o servidor acesse o diagramador sem loops e mude de página qqq
 
+corretamente
+if (strpos($_SERVER['REQUEST_URI'], 'diagramador.php') !== false) {
+    if (file_exists('diagramador.php')) {
+        include 'diagramador.php';
+        exit;
+    }
+}
 ini_set('max_execution_time', 600);
 set_time_limit(600);
 
