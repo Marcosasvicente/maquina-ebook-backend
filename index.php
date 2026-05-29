@@ -1,10 +1,8 @@
 <?php
 /**
- * INDEX.PHP - PREMIUM V9 (PONTE DE DADOS BLINDADA)
- * Resolve o travamento de tela e força o envio correto para o diagramador.php
+ * INDEX.PHP - PREMIUM V10 (ENVIO SEGURO DIRETO)
+ * Corrige o loop e garante o envio dos dados POST para o diagramador.php
  */
-
-session_start();
 
 ini_set('max_execution_time', 600);
 set_time_limit(600);
@@ -45,7 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['buscar_ideias'])) {
     curl_close($ch);
 }
 
-// PASSO 2: Geração do Conteúdo Premium e Redirecionamento de Lado do Servidor
+// PASSO 2: Geração do Conteúdo Premium
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['criar_ebook'])) {
     $promptEbook = "Aja como um Especialista em Psicologia Dark. Escreva um EBOOK PREMIUM em HTML sobre o tema: '$tema'. Use obrigatoriamente tags <h2> para capítulos e tags <h3> para subtítulos. Certifique-se de incluir histórias (storytelling), ganchos de retenção, um plano de ação prático e scripts prontos ao final de cada capítulo. Não use marcações Markdown como '**', use apenas HTML puro.";
     
@@ -65,12 +63,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['criar_ebook'])) {
     $result = json_decode($response, true);
     $ebook_html = $result['choices'][0]['message']['content'] ?? "";
     curl_close($ch);
-
-    // Se o conteúdo foi gerado com sucesso, joga para a sessão e força o redirecionamento limpo
-    if (!empty($ebook_html)) {
-        $_SESSION['tema_escolhido'] = $tema;
-        $_SESSION['ebook_html'] = $ebook_html;
-    }
 }
 ?>
 <!DOCTYPE html>
@@ -85,14 +77,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['criar_ebook'])) {
     <div class="max-w-3xl mx-auto mt-10">
         <h1 class="text-4xl font-black text-red-600 mb-8 tracking-tighter" style="font-family: 'Montserrat';">EBOOKFORGE <span class="text-white">PREMIUM</span></h1>
 
-        <!-- Formulário de Entrada -->
+        <!-- Formulário de Entrada principal -->
         <form method="POST" class="mb-8 flex gap-2">
             <input type="hidden" name="buscar_ideias" value="1">
             <input type="url" name="videoUrl" required class="flex-1 bg-zinc-900 p-4 rounded-xl border border-zinc-800 text-white outline-none focus:border-red-600" placeholder="Insira o Link do Vídeo Base" value="<?= htmlspecialchars($videoUrl) ?>">
             <button class="bg-red-600 hover:bg-red-700 px-6 py-4 rounded-xl font-bold transition">ANALISAR</button>
         </form>
 
-        <!-- Lista de Ideias Geradas -->
+        <!-- Lista de Títulos Gerados -->
         <?php if ($sugestoes): ?>
             <div class="space-y-3">
                 <h3 class="text-zinc-500 font-bold uppercase text-xs tracking-widest mb-2">Selecione o Conceito do Ebook:</h3>
@@ -108,26 +100,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['criar_ebook'])) {
             </div>
         <?php endif; ?>
 
-        <!-- SEÇÃO DE DISPARO DA DIALOCALIZAÇÃO - SEM TRAVAMENTO -->
-        <?php if (isset($_SESSION['ebook_html'])): ?>
-            <div class="mt-8 p-8 border border-red-900 bg-zinc-950 rounded-2xl text-center shadow-2xl">
+        <!-- SEÇÃO DE DISPARO DA DIAGRAMAÇÃO DIRECT-HIT -->
+        <?php if (!empty($ebook_html)): ?>
+            <div class="mt-8 p-8 border border-red-950 bg-zinc-950 rounded-2xl text-center shadow-2xl">
                 <div class="w-12 h-12 border-4 border-t-red-600 border-zinc-800 rounded-full animate-spin mx-auto mb-4"></div>
                 <h2 class="text-xl font-black text-white uppercase tracking-wider mb-2">Conteúdo Processado com Sucesso!</h2>
-                <p class="text-zinc-400 text-sm mb-6">A estrutura premium foi compilada e está pronta para receber a identidade visual dark.</p>
+                <p class="text-zinc-400 text-sm mb-6">A estrutura premium foi copiada e os dados estão estáveis para a renderização dark.</p>
                 
-                <!-- Formulário visível e direto, eliminando o erro de bloqueio de script -->
+                <!-- Formulário com dados embutidos diretamente no HTML nativo -->
                 <form action="diagramador.php" method="POST">
-                    <input type="hidden" name="tema_escolhido" value="<?= htmlspecialchars($_SESSION['tema_escolhido']) ?>">
-                    <textarea name="ebook_html" class="hidden"><?= htmlspecialchars($_SESSION['ebook_html']) ?></textarea>
-                    <button type="submit" class="w-full bg-red-600 text-white p-5 rounded-xl font-black uppercase tracking-wider text-base hover:bg-red-700 transition shadow-lg shadow-red-900/30">
+                    <input type="hidden" name="tema_escolhido" value="<?= htmlspecialchars($tema) ?>">
+                    <textarea name="ebook_html" class="hidden"><?= htmlspecialchars($ebook_html) ?></textarea>
+                    <button type="submit" class="w-full bg-red-600 text-white p-5 rounded-xl font-black uppercase tracking-wider text-base hover:bg-red-700 transition shadow-lg shadow-red-900/40 block">
                         ABRIR NO DIAGRAMADOR DARK NOW →
                     </button>
                 </form>
             </div>
-            <?php 
-                // Limpa a sessão para os próximos livros
-                session_unset(); 
-            ?>
         <?php endif; ?>
     </div>
 </body>
