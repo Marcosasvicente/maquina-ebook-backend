@@ -1,13 +1,9 @@
 <?php
-// 1. BLINDAGEM DE ROTA: Garante que o servidor acesse o diagramador sem loops e mude de página qqq
+/**
+ * INDEX.PHP - PREMIUM V11 (ROTA BLINDADA E LIMPA)
+ * Correção de fluxo direto sem loops ou includes indesejados
+ */
 
-corretamente
-if (strpos($_SERVER['REQUEST_URI'], 'diagramador.php') !== false) {
-    if (file_exists('diagramador.php')) {
-        include 'diagramador.php';
-        exit;
-    }
-}
 ini_set('max_execution_time', 600);
 set_time_limit(600);
 
@@ -110,14 +106,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['criar_ebook']) && !em
     <div class="max-w-4xl mx-auto px-6">
         <h1 class="text-5xl font-black text-[#FF0000] mb-12 text-center" style="font-family: 'Montserrat';">EBOOKFORGE <span class="text-white">PREMIUM</span></h1>
         
+        <!-- Formulário do Vídeo -->
         <form method="POST" class="mb-10">
             <input type="hidden" name="buscar_ideias" value="1">
             <div class="flex gap-2">
-                <input type="url" name="videoUrl" required value="<?= htmlspecialchars($videoUrl) ?>" placeholder="URL do Vídeo Base" class="flex-1 bg-zinc-900 border border-zinc-800 p-4 rounded-xl focus:border-red-600 outline-none">
+                <input type="url" name="videoUrl" required value="<?= htmlspecialchars($videoUrl) ?>" placeholder="URL do Vídeo Base" class="flex-1 bg-zinc-900 border border-zinc-800 p-4 rounded-xl focus:border-red-600 outline-none text-white">
                 <button type="submit" class="bg-red-600 px-8 py-4 rounded-xl font-bold hover:bg-red-700 transition">ANALISAR</button>
             </div>
         </form>
 
+        <!-- Sugestões de Títulos -->
         <?php if ($sugestoes): ?>
             <div class="grid gap-4">
                 <h2 class="text-xl font-bold text-zinc-400 uppercase tracking-widest">Escolha a sua Big Idea:</h2>
@@ -127,7 +125,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['criar_ebook']) && !em
                     <input type="hidden" name="chosen_url" value="<?= htmlspecialchars($videoUrl) ?>">
                     <input type="hidden" name="textoBase" value="<?= htmlspecialchars($textoBase) ?>">
                     <input type="hidden" name="tema_escolhido" value="<?= htmlspecialchars($opcao) ?>">
-                    <button type="submit" class="w-full text-left p-6 bg-zinc-900 border border-zinc-800 rounded-2xl hover:border-red-600 transition-all font-bold text-lg">
+                    <button type="submit" class="w-full text-left p-6 bg-zinc-900 border border-zinc-800 rounded-2xl hover:border-red-600 transition-all font-bold text-lg text-white">
                         <?= htmlspecialchars($opcao) ?>
                     </button>
                 </form>
@@ -135,20 +133,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['criar_ebook']) && !em
             </div>
         <?php endif; ?>
 
-        <?php if ($ebook_html): ?>
-            <div class="mt-12 bg-white text-black p-12 rounded-3xl shadow-2xl overflow-hidden">
-                <div class="prose max-w-none">
-                    <?= $ebook_html ?>
-                </div>
+        <!-- Caixa de Sucesso com Envio Limpo e Seguro -->
+        <?php if ($ebook_html && $ebook_html !== "Erro na geração."): ?>
+            <div class="mt-8 p-8 border border-red-950 bg-zinc-950 rounded-2xl text-center shadow-2xl">
+                <div class="w-12 h-12 border-4 border-t-red-600 border-zinc-800 rounded-full animate-spin mx-auto mb-4"></div>
+                <h2 class="text-xl font-black text-white uppercase tracking-wider mb-2">Conteúdo Premium Compilado!</h2>
+                <p class="text-zinc-400 text-sm mb-6">Pronto para receber a diagramação e as imagens cinematográficas.</p>
+                
+                <!-- Envio Direto via POST padrão sem interceptação de JavaScript -->
+                <form action="diagramador.php" method="POST">
+                    <input type="hidden" name="tema_escolhido" value="<?= htmlspecialchars($tema) ?>">
+                    <textarea name="ebook_html" class="hidden"><?= htmlspecialchars($ebook_html) ?></textarea>
+                    <button type="submit" class="w-full bg-red-600 text-white p-5 rounded-xl font-black uppercase tracking-wider text-base hover:bg-red-700 transition shadow-lg shadow-red-900/40 block">
+                        ABRIR NO DIAGRAMADOR DARK NOW →
+                    </button>
+                </form>
             </div>
-
-            <form action="diagramador.php" method="POST" target="_blank" class="mt-8">
-                <input type="hidden" name="tema_escolhido" value="<?= htmlspecialchars($tema) ?>">
-                <textarea name="ebook_html" class="hidden"><?= htmlspecialchars($ebook_html) ?></textarea>
-                <button type="submit" class="w-full bg-[#FF0000] text-white p-8 rounded-2xl font-black text-2xl shadow-red-900/20 shadow-2xl hover:scale-105 transition-transform">
-                    DIAGRAMAR COMO INFOPRODUTO PREMIUM →
-                </button>
-            </form>
         <?php endif; ?>
     </div>
 </body>
